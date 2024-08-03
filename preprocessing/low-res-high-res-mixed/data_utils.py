@@ -1,3 +1,5 @@
+# Raw data processing code from the ClimSim repository: https://github.com/leap-stc/ClimSim/blob/main/climsim_utils/data_utils.py
+
 import xarray as xr
 import numpy as np
 import pandas as pd
