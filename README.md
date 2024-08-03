@@ -11,7 +11,6 @@ The solution was created by a team consisting of [Marec Serlin](https://github.c
 - [Training](#training)
 
 ## Introduction
-This repository provides the code and resources for the 5th place solution for the LEAP - Atmospheric Physics using AI competition.
 
 We achieved our results by training an ensemble of models, each with its own unique variations. The core of each model architecture is a bidirectional LSTM, with different surrounding layers and engineered features. These variations, detailed below, enabled our models to ensemble effectively, leading to our competitive score and 5th-place finish.
 
