@@ -20,9 +20,10 @@ import h5py
 from tqdm import tqdm
 from typing import Literal
 
+#Path to the locally downloaded copy of the high-res repository 
 DATA_PATH = 'C:/kaggle/CD L1/'
 
-
+#Copy of the useful functions for data preprocessing from https://github.com/leap-stc/ClimSim/blob/main/climsim_utils/data_utils.py
 MLBackendType = Literal["tensorflow", "pytorch"]
 
 class data_utils:
@@ -729,8 +730,6 @@ class data_utils:
         pressure_grid_plotting = np.concatenate(pg_lats, axis = 1)
         return pressure_grid_plotting
 
-
-
     def output_weighting(self, output, data_split, just_weights = False):
         '''
         This function does four transformations, and assumes we are using V1 variables:
@@ -1382,6 +1381,9 @@ class data_utils:
                 np.save(f, np.float32(npy_predict_cnn_reshaped))
         return npy_predict_cnn_reshaped
 
+#Define input and output column names
+#Some inputs and outputs are vertically resolved, corresponding to sequence data with a length of 60
+#Others are simply tabular 
 v2_inputs = ['state_t',
              'state_q0001',
              'state_q0002',
@@ -1475,13 +1477,13 @@ for var in v2_outputs:
     else:
         output_col_names.append(var)
 
+#Check that the length of the training columns, the input and the output data is all appropriate
 assert(len(train_col_names) == 17 + 60*9 + 60*6 + 8)
 assert(len(input_col_names) == 17 + 60*9)
 assert(len(output_col_names) == 60*6 + 8)
 assert(len(set(output_col_names).intersection(set(ablated_col_names))) == len(ablated_col_names))
 
-# initialize data_utils object
-
+#Load the data grid info
 grid_path = DATA_PATH+'ClimSim_high-res_grid-info.nc'
 
 grid_info = xr.open_dataset(grid_path)
@@ -1490,6 +1492,7 @@ input_max = xr.open_dataset(DATA_PATH + 'input_max.nc')
 input_min = xr.open_dataset(DATA_PATH + 'input_min.nc')
 output_scale = xr.open_dataset(DATA_PATH + 'output_scale.nc')
 
+# initialize data_utils object
 data = data_utils(grid_info = grid_info, 
                   input_mean = input_mean, 
                   input_max = input_max, 
@@ -1501,49 +1504,11 @@ data.set_to_v2_vars()
 # do not normalize
 data.normalize = False
 
-# create training data
-
-# set data path for training data
-data.data_path = DATA_PATH
-
-# set regular expressions for selecting training data
-# data.set_regexps(data_split = 'train', 
-#                  regexps = ['E3SM-MMF.mli.000[1234567]-*-*-*.nc', # years 1 through 7
-# #                             'E3SM-MMF.mli.0008-01-*-*.nc']) # first month of year 8
-
-# for i in range(9,10):
-#     for j in tqdm(range(1,2)):
-    
-#         if j < 10:
-#             data.set_regexps(data_split = 'train', 
-#                              regexps = ['E3SM-MMF.mli.000'+str(i)+'-0'+str(j)+'-*-*.nc']) # first month of year 8
-#         else:
-#             data.set_regexps(data_split = 'train', 
-#                              regexps = ['E3SM-MMF.mli.000'+str(i)+'-'+str(j)+'-*-*.nc']) # first month of year 8
-        
-#         # set temporal subsampling
-#         data.set_stride_sample(data_split = 'train', stride_sample = 1)
-#         # data.set_stride_sample()
-#         # create list of files to extract data from
-#         data.set_filelist(data_split = 'train')
-        
-#         # save numpy files of training data
-#         data_loader = data.load_ncdata_with_generator(data_split = 'train')
-#         npy_iterator = list(data_loader.as_numpy_iterator())
-#         npy_input = np.concatenate([npy_iterator[x][0] for x in range(len(npy_iterator))])
-#         npy_output = np.concatenate([npy_iterator[x][1] for x in range(len(npy_iterator))])
-#         train_npy = np.concatenate([npy_input, npy_output], axis = 1)
-#         train_index = ["train_" + str(x) for x in range(train_npy.shape[0])]
-        
-#         train = pd.DataFrame(train_npy, index = train_index, columns = train_col_names)
-#         train.index.name = 'sample_id'
-#         print('dropping cam_in_SNOWHICE because of strange values')
-#         train.drop('cam_in_SNOWHICE', axis=1, inplace=True)
-        
-#         train.to_parquet(DATA_PATH+'c_data_'+str(i)+'_'+str(j)+'.parquet',compression='gzip')
-
+#i is the 'year' index. The high-res data has up to 8 years of data. 
 i = 5 # 6,7,8
+#j is the month index, which gets loops through
 for j in tqdm(range(1,13)):
+    #Set the file names appropriately for the given year
     if j < 10:
         data.set_regexps(data_split = 'train', 
                          regexps = ['E3SM-MMF.mli.000'+str(i)+'-0'+str(j)+'-*-*.nc']) # first month of year 8
@@ -1569,12 +1534,6 @@ for j in tqdm(range(1,13)):
     train.index.name = 'sample_id'
     print('dropping cam_in_SNOWHICE because of strange values')
     train.drop('cam_in_SNOWHICE', axis=1, inplace=True)
-    
+
+    #save the file as a parquet
     train.to_parquet(DATA_PATH+'c_data_'+str(i)+'_'+str(j)+'.parquet')
-
-# # ASSERT, SHAPE, CSV, PRINT
-# assert sum(train.isnull().any()) == 0
-# print(train.shape)
-# train.to_csv('recreated/user_data/train.csv')
-# print('finished creating train data')
-
