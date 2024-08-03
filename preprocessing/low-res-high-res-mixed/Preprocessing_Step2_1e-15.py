@@ -4,29 +4,13 @@ Reads the subsampled low-res csv dataset to calculate standardization parameters
 Then reads the full low-res and subsampled high-res data, standardizes it, and resaves it as hickel files
 '''
 
-import gc
-import os
-import random
 import time
-import torch
 import datetime
 import numpy as np
 import pandas as pd
-import polars as pl
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from torchmetrics.regression import R2Score
 from tqdm import tqdm
-import torch.nn.functional as F
 import hickle as hkl
-from torch.nn import AvgPool1d 
-import torch.nn as nn
 
-from torch.nn import LSTM, Conv1d, TransformerEncoder, TransformerEncoderLayer
-from torch.nn import LayerNorm
-
-from matplotlib.pyplot import plot
 
 def format_time(elapsed):
     """Take a time in seconds and return a string hh:mm:ss."""
@@ -59,8 +43,6 @@ for i in seq_y_list:
 TARGET_COLS = seq_y_expand_list + num_y_list
 FEAT_COLS = seq_fea_expand_list + num_fea_list
 
-
-
 ts = time.time()
 
 #Get the submission weights from the sample submission file
@@ -83,7 +65,6 @@ for i in tqdm(LOG_COLS):
         df[i+'_'+str(j)] = (np.log(df[i+'_'+str(j)]+1e-7)) #Add 1e-7 to avoid log(0) 
         df_test[i+'_'+str(j)] = (np.log(df_test[i+'_'+str(j)]+1e-7)) #Add 1e-7 to avoid log(0) 
 
-gc.collect()
 
 #Initialize a dictionary to store all the normalization values
 norm_dict = dict() 
@@ -101,8 +82,6 @@ for i in num_fea_list:
     mean_value = df[i].values.mean()
     std_value = df[i].values.std()
     norm_dict[i] = [mean_value,std_value]
-
-
 
 #Minimum standardization values
 MIN_STD = 1e-10
@@ -142,41 +121,5 @@ for i1 in tqdm(range(1,9)):
         #Save the data as hickel files
         x_train_i_j = df_i_j[seq_fea_expand_list+num_fea_list].values.astype(np.float32)
         y_train_i_j = df_i_j[seq_y_expand_list+num_y_list].values.astype(np.float32)
-        hkl.dump(x_train_i_j, DATA_PATH+'c_data_x_'+str(i1)+'_'+str(j1)+'_v1_1e-20.hkl')
-        hkl.dump(y_train_i_j, DATA_PATH+'c_data_y_'+str(i1)+'_'+str(j1)+'_v1_1e-20.hkl')
-
-
-DATA_PATH = 'C:/kaggle/CD 1/'
-
-for i1 in tqdm(range(1,9)):
-    if i1 == 1:
-        lower = 2
-    else:
-        lower = 1
-    for j1 in range(lower,13):
-        df_i_j = pd.read_parquet(DATA_PATH+'c_data_'+str(i1)+'_'+str(j1)+'.parquet')
-        for target in tqdm(weights):
-            # print(target)
-            df_i_j[target] = (df_i_j[target]*weights[target])
-                
-        LOG_COLS = ['state_q0001','state_q0002','state_q0003','pbuf_ozone','pbuf_CH4','pbuf_N2O']
-        for i in tqdm(LOG_COLS):
-            for j in range(60):
-                df_i_j[i+'_'+str(j)] = (np.log(df_i_j[i+'_'+str(j)]+1e-7))
-
-        for i in seq_fea_list:
-            inter_list = []
-            for j in range(60):
-                inter_list.append(i+'_'+str(j))
-
-            df_i_j[inter_list] = ((df_i_j[inter_list]-norm_dict[i][0])/(MIN_STD+norm_dict[i][1])).astype('float32')
-
-        for i in num_fea_list:
-            df_i_j[i] = (df_i_j[i]-norm_dict[i][0])/(MIN_STD+norm_dict[i][1]).astype('float32')
-
-        x_train_i_j = df_i_j[seq_fea_expand_list+num_fea_list].values.astype(np.float32)
-        y_train_i_j = df_i_j[seq_y_expand_list+num_y_list].values
-        y_train_i_j = (y_train_i_j - my.reshape(1,-1)) / sy.reshape(1,-1)
-        y_train_i_j = y_train_i_j.astype(np.float32)
         hkl.dump(x_train_i_j, DATA_PATH+'c_data_x_'+str(i1)+'_'+str(j1)+'_v1_1e-20.hkl')
         hkl.dump(y_train_i_j, DATA_PATH+'c_data_y_'+str(i1)+'_'+str(j1)+'_v1_1e-20.hkl')
